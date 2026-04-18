@@ -368,6 +368,32 @@ async function checkGitHubStatus(username, repository) {
     }
 }
 
+// Função para parsear entrada de repositório GitHub
+function normalizeGitHubRepoInput(username, repository) {
+    const repoInput = repository ? repository.trim() : '';
+    let owner = username ? username.trim() : '';
+    let repo = repoInput;
+
+    const githubUrlMatch = repoInput.match(/github\.com\/(.+?)(?:\.git)?$/i);
+    if (githubUrlMatch) {
+        const fullPath = githubUrlMatch[1].replace(/\.git$/i, '');
+        const parts = fullPath.split('/').filter(Boolean);
+        if (parts.length === 2) {
+            owner = parts[0];
+            repo = parts[1];
+        }
+    } else if (repoInput.includes('/') && !owner) {
+        const parts = repoInput.split('/').filter(Boolean);
+        if (parts.length === 2) {
+            owner = parts[0];
+            repo = parts[1];
+        }
+    }
+
+    repo = repo.replace(/\.git$/i, '');
+    return { username: owner, repository: repo };
+}
+
 // Configurar verificação do GitHub
 function setupGitHubCheck() {
     // Adicionar botão de verificação na interface
@@ -385,7 +411,7 @@ function setupGitHubCheck() {
                     <div style="display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap;">
                         <input type="text" id="githubUsername" placeholder="Seu usuário do GitHub" 
                                style="padding: 10px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--primary-color); color: var(--text-primary); min-width: 200px;">
-                        <input type="text" id="githubRepo" placeholder="seu-repositorio" value=""
+                        <input type="text" id="githubRepo" placeholder="Seu repositório ou URL" value=""
                                style="padding: 10px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--primary-color); color: var(--text-primary); min-width: 200px;">
                         <button onclick="checkMyProgress()" 
                                 style="padding: 10px 20px; background: var(--accent-color); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
@@ -401,8 +427,11 @@ function setupGitHubCheck() {
 
 // Função global para verificar progresso
 window.checkMyProgress = async function () {
-    const username = document.getElementById('githubUsername').value.trim();
-    const repository = document.getElementById('githubRepo').value.trim();
+    let username = document.getElementById('githubUsername').value.trim();
+    let repository = document.getElementById('githubRepo').value.trim();
+    const normalized = normalizeGitHubRepoInput(username, repository);
+    username = normalized.username;
+    repository = normalized.repository;
 
     // Reset seleção e certificado ao trocar de usuário
     const currentCertUser = document.getElementById('certificateUsername').value.trim();
@@ -428,13 +457,8 @@ window.checkMyProgress = async function () {
     if (downloadBtn) downloadBtn.disabled = true;
     selectedCertificateLevel = null;
 
-    if (!username) {
-        showNotification('Por favor, informe seu usuário do GitHub', 'warning');
-        return;
-    }
-
-    if (!repository) {
-        showNotification('Por favor, informe o nome do repositório', 'warning');
+    if (!username || !repository) {
+        showNotification('Por favor, informe seu usuário e repositório do GitHub. Você também pode colar a URL completa.', 'warning');
         return;
     }
 

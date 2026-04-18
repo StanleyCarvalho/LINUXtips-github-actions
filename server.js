@@ -237,11 +237,45 @@ app.get('/api/certificate/:username', (req, res) => {
 /* istanbul ignore next */
 app.post('/api/check-github-status', async (req, res) => {
   try {
-    const { repository, username } = req.body;
+    let { repository, username } = req.body;
+
+    const parseRepositoryInput = (user, repoInput) => {
+      let owner = user ? user.trim() : '';
+      let repo = repoInput ? repoInput.trim() : '';
+
+      const githubUrlMatch = repo.match(/github\.com\/(.+?)(?:\.git)?$/i);
+      if (githubUrlMatch) {
+        const fullPath = githubUrlMatch[1].replace(/\.git$/i, '');
+        const parts = fullPath.split('/').filter(Boolean);
+        if (parts.length === 2) {
+          owner = parts[0];
+          repo = parts[1];
+        }
+      } else if (repo.includes('/') && !owner) {
+        const parts = repo.split('/').filter(Boolean);
+        if (parts.length === 2) {
+          owner = parts[0];
+          repo = parts[1];
+        }
+      }
+
+      return { owner, repo: repo.replace(/\.git$/i, '') };
+    };
+
+    const parsed = parseRepositoryInput(username, repository);
+    username = parsed.owner;
+    repository = parsed.repo;
 
     if (!repository || !username) {
       return res.status(400).json({ error: 'Repository e username são obrigatórios' });
     }
+
+    const fetchOptions = {
+      headers: {
+        'Accept': 'application/vnd.github+json',
+        'User-Agent': 'Descomplicando-GitHub-Actions-App'
+      }
+    };
 
     // Fazer request para a API do GitHub para verificar workflow runs
     const apiUrl = `https://api.github.com/repos/${username}/${repository}/actions/runs?per_page=15`;
@@ -249,7 +283,7 @@ app.post('/api/check-github-status', async (req, res) => {
     console.log(`[DEBUG] Verificando repositório: ${username}/${repository}`);
     console.log(`[DEBUG] URL da API: ${apiUrl}`);
 
-    const response = await fetch(apiUrl);
+    const response = await fetch(apiUrl, fetchOptions);
     const data = await response.json();
 
     console.log(`[DEBUG] Status da resposta: ${response.status}`);
@@ -295,7 +329,7 @@ app.post('/api/check-github-status', async (req, res) => {
         const latestL1 = successfulRuns[0];
         const artifactsUrlL1 = `https://api.github.com/repos/${username}/${repository}/actions/runs/${latestL1.id}/artifacts`;
         try {
-          const respL1 = await fetch(artifactsUrlL1);
+          const respL1 = await fetch(artifactsUrlL1, fetchOptions);
           const dataL1 = await respL1.json();
           // Aceitar qualquer artefato como válido, não apenas certificados
           hasArtifactsLevel1 = (dataL1.artifacts && dataL1.artifacts.length > 0);
@@ -307,7 +341,7 @@ app.post('/api/check-github-status', async (req, res) => {
         const latestL2 = challenge2Runs[0];
         const artifactsUrlL2 = `https://api.github.com/repos/${username}/${repository}/actions/runs/${latestL2.id}/artifacts`;
         try {
-          const respL2 = await fetch(artifactsUrlL2);
+          const respL2 = await fetch(artifactsUrlL2, fetchOptions);
           const dataL2 = await respL2.json();
           // Aceitar qualquer artefato como válido
           hasArtifactsLevel2 = (dataL2.artifacts && dataL2.artifacts.length > 0);
@@ -319,7 +353,7 @@ app.post('/api/check-github-status', async (req, res) => {
         const latestL3 = challenge3Runs[0];
         const artifactsUrlL3 = `https://api.github.com/repos/${username}/${repository}/actions/runs/${latestL3.id}/artifacts`;
         try {
-          const respL3 = await fetch(artifactsUrlL3);
+          const respL3 = await fetch(artifactsUrlL3, fetchOptions);
           const dataL3 = await respL3.json();
           // Aceitar qualquer artefato como válido
           hasArtifactsLevel3 = (dataL3.artifacts && dataL3.artifacts.length > 0);
@@ -337,12 +371,12 @@ app.post('/api/check-github-status', async (req, res) => {
 
       // Atualizar métrica de commits da branch padrão
       try {
-        const repoResp = await fetch(`https://api.github.com/repos/${username}/${repository}`);
+        const repoResp = await fetch(`https://api.github.com/repos/${username}/${repository}`, fetchOptions);
         if (repoResp.ok) {
           const repoJson = await repoResp.json();
           const defaultBranch = repoJson.default_branch;
           if (defaultBranch) {
-            const commitsResp = await fetch(`https://api.github.com/repos/${username}/${repository}/commits?sha=${defaultBranch}&per_page=1`);
+            const commitsResp = await fetch(`https://api.github.com/repos/${username}/${repository}/commits?sha=${defaultBranch}&per_page=1`, fetchOptions);
             if (commitsResp.ok) {
               const linkHeader = commitsResp.headers.get('link');
               let commitCount = 0;
