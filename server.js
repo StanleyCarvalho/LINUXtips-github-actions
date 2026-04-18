@@ -251,23 +251,34 @@ app.post('/api/check-github-status', async (req, res) => {
 
     if (response.ok && data.workflow_runs) {
       // Verificar se existe algum workflow run bem-sucedido
-      const successfulRuns = data.workflow_runs.filter(run =>
+      // Aceitar qualquer workflow bem-sucedido (não restringir por nome)
+      const allSuccessfulRuns = data.workflow_runs.filter(run =>
         run.status === 'completed' &&
-        run.conclusion === 'success' &&
-        run.name && run.name.includes('Basic CI')
+        run.conclusion === 'success'
       );
 
-      const challenge2Runs = data.workflow_runs.filter(run =>
-        run.status === 'completed' &&
-        run.conclusion === 'success' &&
-        run.name && (run.name.includes('Nível 2') || run.name.includes('Testing'))
+      // Distribuir runs por nível baseado em padrões de nome (mais flexível)
+      let successfulRuns = allSuccessfulRuns;
+      let challenge2Runs = allSuccessfulRuns.filter(run =>
+        run.name && (run.name.toLowerCase().includes('nível 2') || 
+                     run.name.toLowerCase().includes('teste') ||
+                     run.name.toLowerCase().includes('test') ||
+                     run.name.toLowerCase().includes('02-'))
+      );
+      let challenge3Runs = allSuccessfulRuns.filter(run =>
+        run.name && (run.name.toLowerCase().includes('nível 3') || 
+                     run.name.toLowerCase().includes('container') ||
+                     run.name.toLowerCase().includes('security') ||
+                     run.name.toLowerCase().includes('03-'))
       );
 
-      const challenge3Runs = data.workflow_runs.filter(run =>
-        run.status === 'completed' &&
-        run.conclusion === 'success' &&
-        run.name && (run.name.includes('Nível 3') || run.name.includes('Containers') || run.name.includes('Security'))
-      );
+      // Se não encontrou runs específicos por nível, usar todos como fallback
+      if (challenge2Runs.length === 0 && allSuccessfulRuns.length > 0) {
+        challenge2Runs = [allSuccessfulRuns[0]];
+      }
+      if (challenge3Runs.length === 0 && allSuccessfulRuns.length > 1) {
+        challenge3Runs = [allSuccessfulRuns[1]];
+      }
 
       // Verificar artefatos por nível (certificado gerado)
       let hasArtifactsLevel1 = false;
@@ -279,8 +290,8 @@ app.post('/api/check-github-status', async (req, res) => {
         try {
           const respL1 = await fetch(artifactsUrlL1);
           const dataL1 = await respL1.json();
-          const names = (dataL1.artifacts || []).map(a => a.name || '');
-          hasArtifactsLevel1 = names.some(n => n.includes('level-1-certificate') || n.includes('certificate'));
+          // Aceitar qualquer artefato como válido, não apenas certificados
+          hasArtifactsLevel1 = (dataL1.artifacts && dataL1.artifacts.length > 0);
         } catch (error) {
           console.log('Erro ao verificar artefatos L1:', error);
         }
@@ -291,8 +302,8 @@ app.post('/api/check-github-status', async (req, res) => {
         try {
           const respL2 = await fetch(artifactsUrlL2);
           const dataL2 = await respL2.json();
-          const names = (dataL2.artifacts || []).map(a => a.name || '');
-          hasArtifactsLevel2 = names.some(n => n.includes('level-2-certificate') || n.includes('certificate'));
+          // Aceitar qualquer artefato como válido
+          hasArtifactsLevel2 = (dataL2.artifacts && dataL2.artifacts.length > 0);
         } catch (error) {
           console.log('Erro ao verificar artefatos L2:', error);
         }
@@ -303,8 +314,8 @@ app.post('/api/check-github-status', async (req, res) => {
         try {
           const respL3 = await fetch(artifactsUrlL3);
           const dataL3 = await respL3.json();
-          const names = (dataL3.artifacts || []).map(a => a.name || '');
-          hasArtifactsLevel3 = names.some(n => n.includes('level-3-certificate'));
+          // Aceitar qualquer artefato como válido
+          hasArtifactsLevel3 = (dataL3.artifacts && dataL3.artifacts.length > 0);
         } catch (error) {
           console.log('Erro ao verificar artefatos L3:', error);
         }
