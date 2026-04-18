@@ -244,10 +244,17 @@ app.post('/api/check-github-status', async (req, res) => {
     }
 
     // Fazer request para a API do GitHub para verificar workflow runs
-    const apiUrl = `https://api.github.com/repos/${username}/${repository}/actions/runs?status=success&per_page=15`;
+    const apiUrl = `https://api.github.com/repos/${username}/${repository}/actions/runs?per_page=15`;
+
+    console.log(`[DEBUG] Verificando repositório: ${username}/${repository}`);
+    console.log(`[DEBUG] URL da API: ${apiUrl}`);
 
     const response = await fetch(apiUrl);
     const data = await response.json();
+
+    console.log(`[DEBUG] Status da resposta: ${response.status}`);
+    console.log(`[DEBUG] Número de runs recebidos: ${data.workflow_runs ? data.workflow_runs.length : 0}`);
+    console.log(`[DEBUG] Resposta completa:`, JSON.stringify(data).substring(0, 500));
 
     if (response.ok && data.workflow_runs) {
       // Verificar se existe algum workflow run bem-sucedido
@@ -439,11 +446,18 @@ app.post('/api/check-github-status', async (req, res) => {
       });
     }
 
-    return res.status(404).json({ error: 'Repositório não encontrado ou sem permissão' });
+    return res.status(response.status || 404).json({ 
+      error: `Repositório não encontrado ou sem permissão. Status: ${response.status}`,
+      details: data.message || 'Sem detalhes adicionais',
+      apiUrl: apiUrl
+    });
 
   } catch (error) {
     console.error('Erro ao verificar status do GitHub:', error);
-    return res.status(500).json({ error: 'Erro interno do servidor' });
+    return res.status(500).json({ 
+      error: 'Erro interno do servidor',
+      details: error.message
+    });
   }
 });
 
