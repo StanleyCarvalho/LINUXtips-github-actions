@@ -44,7 +44,7 @@ describe('Testes do Descomplicando GitHub Actions', () => {
   it('deve retornar 404 quando API do GitHub não estiver OK', async () => {
     const originalFetch = global.fetch;
     global.fetch = jest.fn().mockResolvedValueOnce({ ok: false, json: async () => ({}) });
-    const res = await request(app).post('/api/check-github-status').send({ repository: 'LINUXtips-github-actions', username: 'user' });
+    const res = await request(app).post('/api/check-github-status').send({ repository: 'StanleyCarvalho-github-actions', username: 'StanleyCarvalho' });
     expect(res.statusCode).toBe(404);
     global.fetch = originalFetch;
   });

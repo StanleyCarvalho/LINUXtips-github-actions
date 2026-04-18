@@ -310,15 +310,8 @@ app.post('/api/check-github-status', async (req, res) => {
         }
       }
 
-      // Verificar se o repositório tem o nome exato (case insensitive)
-      const validRepoNames = [
-        'linuxtips-github-actions',
-        'LINUXtips-github-actions',
-        'LINUXTIPS-GITHUB-ACTIONS'
-      ];
-      const repoNameValid = validRepoNames.some(validName =>
-        repository.toLowerCase() === validName.toLowerCase()
-      );
+      // Repositório válido se o nome foi fornecido (não há restrição de nome)
+      const repoNameValid = !!repository;
 
       const canAwardLevel1 = successfulRuns.length > 0 && repoNameValid && hasArtifactsLevel1;
       const canAwardLevel2 = challenge2Runs.length > 0 && repoNameValid && hasArtifactsLevel2;
@@ -422,7 +415,7 @@ app.post('/api/check-github-status', async (req, res) => {
         return res.json({
           success: false,
           badgeEarned: false,
-          message: 'Nome do repositório deve ser: LINUXtips-github-actions (qualquer combinação de maiúsculas/minúsculas)',
+          message: 'Nome do repositório deve ser informado',
           progress: learningProgress
         });
       }
@@ -519,7 +512,7 @@ app.get('/api/repository-info', (req, res) => {
   res.json({
     message: 'Para verificação automática, informe seu usuário e repositório no GitHub',
     example: {
-      username: 'seu-usuario',
+      username: 'StanleyCarvalho',
       repository: 'LINUXtips-github-actions'
     },
     webhook: {

@@ -385,7 +385,7 @@ function setupGitHubCheck() {
                     <div style="display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap;">
                         <input type="text" id="githubUsername" placeholder="Seu usuário do GitHub" 
                                style="padding: 10px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--primary-color); color: var(--text-primary); min-width: 200px;">
-                        <input type="text" id="githubRepo" placeholder="LINUXtips-github-actions" value="LINUXtips-github-actions"
+                        <input type="text" id="githubRepo" placeholder="seu-repositorio" value=""
                                style="padding: 10px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--primary-color); color: var(--text-primary); min-width: 200px;">
                         <button onclick="checkMyProgress()" 
                                 style="padding: 10px 20px; background: var(--accent-color); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
